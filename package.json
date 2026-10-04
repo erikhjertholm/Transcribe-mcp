@@ -1,0 +1,13 @@
+{
+  "name": "transcribe-mcp",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "*",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.147.0"
+  }
+}
