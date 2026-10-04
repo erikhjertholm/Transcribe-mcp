@@ -1,26 +1,31 @@
 // TikTok Audio MCP
-// Supports MCP POST requests and browser-friendly GET requests for testing.
+// Gets a direct TikTok audio URL through TikWM and supports MCP plus browser GET testing.
 
 import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-async function getClipxAudioUrl(tiktokUrl) {
-    const clipxUrl =
-        "https://clipx.zamdev.workers.dev?url=" +
+async function getTikTokAudioUrl(tiktokUrl) {
+    const apiUrl =
+        "https://www.tikwm.com/api/?hd=1&url=" +
         encodeURIComponent(tiktokUrl);
 
-    const clipxResponse = await fetch(clipxUrl);
+    const apiResponse = await fetch(apiUrl);
 
-    if (!clipxResponse.ok) {
-        throw new Error("ClipX returned HTTP " + clipxResponse.status);
+    if (!apiResponse.ok) {
+        throw new Error("TikWM returned HTTP " + apiResponse.status);
     }
 
-    const clipxData = await clipxResponse.json();
-    const audioUrl = clipxData?.data?.audio?.play;
+    const apiData = await apiResponse.json();
+
+    if (apiData.code !== 0) {
+        throw new Error("TikWM error: " + apiData.msg);
+    }
+
+    const audioUrl = apiData.data?.music || apiData.data?.music_info?.play;
 
     if (!audioUrl) {
-        throw new Error("ClipX returned no audio URL.");
+        throw new Error("TikWM returned no audio URL.");
     }
 
     return audioUrl;
@@ -35,13 +40,13 @@ function createServer() {
     server.registerTool(
         "get_tiktok_audio",
         {
-            description: "Fetch the audio URL from a TikTok video URL.",
+            description: "Get the direct audio URL for a TikTok video.",
             inputSchema: z.object({
                 tiktokUrl: z.string().url()
             })
         },
         async ({ tiktokUrl }) => {
-            const audioUrl = await getClipxAudioUrl(tiktokUrl);
+            const audioUrl = await getTikTokAudioUrl(tiktokUrl);
 
             return {
                 content: [
@@ -72,22 +77,19 @@ export default {
             }
 
             try {
-                const audioUrl = await getClipxAudioUrl(tiktokUrl);
+                const audioUrl = await getTikTokAudioUrl(tiktokUrl);
 
                 return Response.json({
                     status: "ok",
                     audioUrl: audioUrl
                 });
             } catch (error) {
-                return Response.json(
-                    {
-                        status: "error",
-                        message: error instanceof Error ? error.message : String(error)
-                    },
-                    {
-                        status: 502
-                    }
-                );
+                return Response.json({
+                    status: "error",
+                    message: error instanceof Error ? error.message : String(error)
+                }, {
+                    status: 502
+                });
             }
         }
 
